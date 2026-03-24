@@ -1,11 +1,15 @@
-﻿namespace ballnamespace
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace WpfApp1
 {
     public class Ball
     {
 
-        private int Id;
-        private double X;
-        private double Y;
+        public int Id { get; set; }
+        public double X { get; set; }
+        public double Y { get; set; }
 
         public Ball(int id, double x, double y)
         {
