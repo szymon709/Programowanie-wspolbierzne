@@ -1,5 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using WpfApp1.Dane;
+﻿using WpfApp1.Dane;
 
 namespace TestProject1
 {
@@ -14,7 +13,7 @@ namespace TestProject1
 
             api.StworzKule(oczekiwanaLiczbaKul);
 
-            Assert.AreEqual(oczekiwanaLiczbaKul, api.PobierzKule().Count);
+            Assert.HasCount(oczekiwanaLiczbaKul, api.PobierzKule());
 
             foreach (var kula in api.PobierzKule())
             {

@@ -1,6 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Collections.Generic;
-using WpfApp1.Dane;
+﻿using WpfApp1.Dane;
 using WpfApp1.Logika;
 
 namespace TestProject1
@@ -8,7 +6,7 @@ namespace TestProject1
     internal class UdawaneDane : DaneApi
     {
         public List<Kula> Kule = new List<Kula>();
-        public override void StworzKule(int ile) {}
+        public override void StworzKule(int ile) { }
         public override List<Kula> PobierzKule() => Kule;
     }
 
@@ -25,7 +23,7 @@ namespace TestProject1
 
             var pobraneKule = logika.PobierzWszystkieKule();
 
-            Assert.AreEqual(1, pobraneKule.Count);
+            Assert.HasCount(1, pobraneKule);
             Assert.AreEqual(100, pobraneKule[0].X);
         }
     }
