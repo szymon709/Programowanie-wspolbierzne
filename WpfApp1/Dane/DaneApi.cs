@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.ComponentModel;
 
 namespace WpfApp1.Dane
 {
@@ -9,16 +8,28 @@ namespace WpfApp1.Dane
         public static int Wysokosc = 300;
     }
 
-    public class Kula
+    public class Kula : INotifyPropertyChanged
     {
+        private double _x;
+        private double _y;
         public int Id { get; set; }
-        public double X { get; set; }
-        public double Y { get; set; }
+        public double X {
+            get => _x;
+            set { _x = value; OnPropertyChanged(nameof(X)); }
+        }
+        public double Y
+        {
+            get => _y;
+            set { _y = value; OnPropertyChanged(nameof(Y)); }
+        }
         public double Srednica { get; set; }
 
-        // predkosc aby kule nie teleportowaly sie, tylko faktycznuie toczyly sie
         public double PredkoscX { get; set; }
         public double PredkoscY { get; set; }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged(string name) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     public abstract class DaneApi

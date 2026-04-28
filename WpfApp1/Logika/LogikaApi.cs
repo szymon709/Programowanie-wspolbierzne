@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using WpfApp1.Dane;
+﻿using WpfApp1.Dane;
 
 namespace WpfApp1.Logika
 {
@@ -16,12 +13,13 @@ namespace WpfApp1.Logika
             return new LogikaInstancja(dane ?? DaneApi.TworzApi());
         }
     }
-
+    
     internal class LogikaInstancja : LogikaApi
     {
         private readonly DaneApi _dane;
         private Timer _stoper;
         public override event Action PowiadomOZmianie;
+        private const int InterwalMs = 20;
 
         public LogikaInstancja(DaneApi dane)
         {
@@ -30,25 +28,30 @@ namespace WpfApp1.Logika
 
         public override void Start(int liczbaKul)
         {
+            _stoper?.Dispose();
             _dane.StworzKule(liczbaKul);
-            _stoper = new Timer(Ruch, null, 0, 20);   // co 20 ms wykonaj ruch
+            _stoper = new Timer(Ruch, null, 0, InterwalMs);
+        }
+
+        public void Stop()
+        {
+            _stoper?.Dispose();
+            _stoper = null;
         }
 
         private void Ruch(object stan)
         {
             foreach (var kula in _dane.PobierzKule())
             {
-                // zmiana pozycji o ustalona predkosc
                 kula.X += kula.PredkoscX;
                 kula.Y += kula.PredkoscY;
 
-                // odbijanie od scian po X
+                // odbijanie od scian
                 if (kula.X <= 0 || kula.X + kula.Srednica >= Stol.Szerokosc)
                 {
-                    kula.PredkoscX = -kula.PredkoscX; // zmiana kierunku na przeciwny
+                    kula.PredkoscX = -kula.PredkoscX;
                 }
 
-                // odbjinanie od scian po Y
                 if (kula.Y <= 0 || kula.Y + kula.Srednica >= Stol.Wysokosc)
                 {
                     kula.PredkoscY = -kula.PredkoscY;
@@ -57,6 +60,6 @@ namespace WpfApp1.Logika
             PowiadomOZmianie?.Invoke();
         }
 
-        public override List<Kula> PobierzWszystkieKule() => _dane.PobierzKule();
+        public override List<Kula> PobierzWszystkieKule() => new List<Kula>(_dane.PobierzKule());
     }
 }

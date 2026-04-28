@@ -32,14 +32,16 @@ namespace WpfApp1.Prezentacja
 
         private void OdswiezKuleNaEkranie()
         {
-            // Musimy użyć Dispatchera, bo Timer działa w innym wątku niż okno aplikacji
             Application.Current.Dispatcher.Invoke(() =>
             {
+                var kuleZModelu = _model.WezKule();
+
                 Kule.Clear();
-                foreach (var k in _model.WezKule())
+                foreach (var k in kuleZModelu)
                 {
                     Kule.Add(k);
                 }
+                
             });
         }
 

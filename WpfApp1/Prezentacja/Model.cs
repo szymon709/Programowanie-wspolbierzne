@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using WpfApp1.Logika;
+﻿using WpfApp1.Logika;
 using WpfApp1.Dane;
 
 namespace WpfApp1.Prezentacja
