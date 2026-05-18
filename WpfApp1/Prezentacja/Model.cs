@@ -1,24 +1,42 @@
-﻿using WpfApp1.Logika;
-using WpfApp1.Dane;
+﻿using WpfApp1.Dane;
+using WpfApp1.Logika;
 
 namespace WpfApp1.Prezentacja
 {
     public class Model
     {
-        private LogikaApi _logika;
+        private readonly LogikaApi _logika;
 
-        public Model()
+        public Model() : this(LogikaApi.TworzApi())
         {
-            _logika = LogikaApi.TworzApi();
+            // jeśli ktoś wywoła konstruktor model, to wywoła się new Model(LogikaApi.TworzApi())
         }
 
-        public void RozpocznijGre(int kule) => _logika.Start(kule);
-        public List<Kula> WezKule() => _logika.PobierzWszystkieKule();
-
-        public event Action Zmiana
+        public Model(LogikaApi logika) // drugi konstruktor do testów
         {
-            add => _logika.PowiadomOZmianie += value;
-            remove => _logika.PowiadomOZmianie -= value;
+            _logika = logika; // wstrzykiwanie zależności (DI)
+        }
+
+        public Task RozpocznijGreAsync(int kule)
+        {
+            return _logika.StartAsync(kule);
+        }
+
+        public void ZatrzymajGre()
+        {
+            _logika.Stop();
+        }
+
+        public IReadOnlyList<Kula> WezKule()
+        {
+            return _logika.PobierzWszystkieKule();
+        }
+
+        public event Action? Zmiana
+        {
+            add => _logika.PowiadomOZmianie += value; // gdy ktoś zapisze do Model.Zmiana, to przekaż to
+            // do _logika.PowiadomOZmianie
+            remove => _logika.PowiadomOZmianie -= value; // gdy ktoś wypisuje (usuwa) -> usuń go logiki
         }
     }
 }
