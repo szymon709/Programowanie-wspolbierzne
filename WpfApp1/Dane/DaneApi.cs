@@ -1,4 +1,9 @@
-﻿namespace WpfApp1.Dane
+﻿using System.Collections.Concurrent;
+using System.IO;
+using System.Text;
+using System.Text.Json;
+
+namespace WpfApp1.Dane
 {
     public static class Stol
     {
@@ -41,7 +46,6 @@
         }
     }
 
-
     public abstract class DaneApi
     {
         public abstract void StworzKule(int ileKul);
@@ -55,11 +59,50 @@
         }
     }
 
+    // logi
+    internal class RejestratorDiagnostyczny
+    {
+        // kolejka wspólbieżna - nie ma bledow, jak wątki chcą logować jednocześnie
+        private readonly ConcurrentQueue<string> _kolejkaKlod = new();
+        private readonly Task _zadanieZapisu;
+
+        public RejestratorDiagnostyczny()
+        {
+            _zadanieZapisu = Task.Run(ZapisujWtleAsync); // zapis w tle
+        }
+
+        public void ZapiszStanKuli(Kula kula)
+        {
+            // serializacja do tekstu
+            string json = JsonSerializer.Serialize(kula);
+            string wpis = $"{DateTime.Now:O} | {json}";
+            _kolejkaKlod.Enqueue(wpis);
+        }
+
+        private async Task ZapisujWtleAsync()
+        {
+            using StreamWriter writer = new StreamWriter("diagnostyka.log", append: false, Encoding.ASCII);
+
+            while (true)
+            {
+                if (_kolejkaKlod.TryDequeue(out string? wpis))
+                {
+                    await writer.WriteLineAsync(wpis);
+                }
+                else
+                {
+                    await Task.Delay(10);
+                }
+            }
+        }
+    }
+
     internal class DaneInstancja : DaneApi // internal -> widoczna w projekcie
     {
         private readonly List<Kula> _listKul = new(); // skrót "= new List<Kula>();"
         private readonly object _sekcjaKrytyczna = new(); // readonly -> nie można przypisać innej zmiennej po konstruktorze
-        private readonly Random _losuj = new(); // ale zawartość można
+        private readonly Random _losuj = new();
+        private readonly RejestratorDiagnostyczny _rejestrator = new(); // logger
 
         public override void StworzKule(int ileKul)
         {
@@ -114,12 +157,12 @@
                 foreach (var kula in _listKul)
                 {
                     kula.Przesun(deltaTime);
+                    _rejestrator.ZapiszStanKuli(kula); // Zapis diagnostyczny po przesunięciu
                 }
 
                 operacjePoRuchu?.Invoke(_listKul); // wykonaj to jeśli nie jest null
             }
         }
-
 
         private static double ObliczMase(double srednica)
         {

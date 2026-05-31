@@ -1,4 +1,5 @@
-﻿using WpfApp1.Dane;
+﻿using System.Diagnostics;
+using WpfApp1.Dane;
 
 namespace WpfApp1.Logika
 {
@@ -84,17 +85,24 @@ namespace WpfApp1.Logika
 
         private async Task PetlaSymulacjiAsync(CancellationToken token)
         {
+            // programowanie czasu rzeczywistego, liczymy rzeczywisty upływ czasu
+            Stopwatch stoper = Stopwatch.StartNew();
+
             try
             {
                 while (!token.IsCancellationRequested)
                 {
-                    WykonajKrok(DeltaTime);
+                    double rzeczywistyCzas = stoper.Elapsed.TotalSeconds;
+                    stoper.Restart();
+
+                    WykonajKrok(rzeczywistyCzas);
+
                     await Task.Delay(InterwalMs, token);
                 }
             }
             catch (OperationCanceledException)
             {
-                // Zatrzymanie symulacji
+                // zatrzymanie symulacji
             }
         }
 
