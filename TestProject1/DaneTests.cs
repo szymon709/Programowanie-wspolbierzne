@@ -1,5 +1,4 @@
 ﻿using WpfApp1.Dane;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace TestProject1
 {
@@ -48,7 +47,27 @@ namespace TestProject1
         }
 
         [TestMethod]
-        public void TestPobierzKuleZwracaKopieNieOryginalnaListe()
+        public async Task TestAktualizujStanTworzyPlikDiagnostyki()
+        {
+            string fileName = "diagnostyka.log";
+
+            if (File.Exists(fileName))
+            {
+                File.Delete(fileName);
+            }
+
+            DaneApi api = DaneApi.TworzApi();
+
+            api.StworzKule(1);
+            api.AktualizujStan(0.1);
+
+            await Task.Delay(300);
+
+            Assert.IsTrue(File.Exists(fileName), "Plik diagnostyka.log powinien zostać utworzony.");
+        }
+
+        [TestMethod]
+        public void TestPobierzKuleZwracaKopie()
         {
             DaneApi api = DaneApi.TworzApi();
 
@@ -57,40 +76,11 @@ namespace TestProject1
             var pobranaKula = api.PobierzKule().Single();
             double oryginalneX = pobranaKula.X;
 
-            pobranaKula.X = 999;
+            pobranaKula.UstawKule(999, pobranaKula.Y);
 
             var ponowniePobranaKula = api.PobierzKule().Single();
 
             Assert.AreEqual(oryginalneX, ponowniePobranaKula.X, 0.000001);
-        }
-
-        [TestMethod]
-        public async Task TestTworzenieLogow()
-        {
-            string testFileName = "test_diagnostyka.log";
-            if (File.Exists(testFileName)) File.Delete(testFileName);
-
-            string json = """
-            {
-                "kula": {
-                    "x": 10,
-                    "y": 20
-                }
-            }
-            """;
-
-            using (StreamWriter writer = new StreamWriter(testFileName, false, System.Text.Encoding.ASCII))
-            {
-                await writer.WriteLineAsync(json);
-            }
-
-            await Task.Delay(100);
-
-            Assert.IsTrue(File.Exists(testFileName), "Logi utworzone");
-            string content = File.ReadAllText(testFileName);
-            Assert.IsTrue(content.Contains("10"), "Plik logów ma dane");
-
-            if (File.Exists(testFileName)) File.Delete(testFileName);
         }
     }
 }

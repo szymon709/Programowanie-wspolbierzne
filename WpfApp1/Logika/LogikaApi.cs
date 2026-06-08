@@ -20,7 +20,6 @@ namespace WpfApp1.Logika
     internal class LogikaInstancja : LogikaApi
     {
         private const int InterwalMs = 20;
-        private const double DeltaTime = InterwalMs / 1000.0;
 
         private readonly DaneApi _dane;
         private readonly object _sekcjaStartStop = new();
@@ -47,24 +46,20 @@ namespace WpfApp1.Logika
 
             var noweZrodlo = new CancellationTokenSource(); // obiekt do zatrzymywania pętli async
 
-            lock (_sekcjaStartStop)
-            {
-                _zrodloAnulowania = noweZrodlo; // przypisujemy ten obiekt
-                _zadanieSymulacji = Task.Run(() => PetlaSymulacjiAsync(noweZrodlo.Token));
-            } // linia wyżej uruchamia taska w tle
+
+            _zrodloAnulowania = noweZrodlo; // przypisujemy ten obiekt
+            _zadanieSymulacji = Task.Run(() => PetlaSymulacjiAsync(noweZrodlo.Token));
+            // linia wyżej uruchamia taska w tle
 
             return Task.CompletedTask;
         }
 
         public override void Stop()
         {
-            lock (_sekcjaStartStop)
-            {
-                _zrodloAnulowania?.Cancel();
-                _zrodloAnulowania?.Dispose();
-                _zrodloAnulowania = null;
-                _zadanieSymulacji = null;
-            }
+            _zrodloAnulowania?.Cancel();
+            _zrodloAnulowania?.Dispose();
+            _zrodloAnulowania = null;
+            _zadanieSymulacji = null;
         }
 
         public override void WykonajKrok(double deltaTime)
@@ -112,24 +107,24 @@ namespace WpfApp1.Logika
             {
                 if (kula.X < 0)
                 {
-                    kula.X = 0;
-                    kula.PredkoscX = Math.Abs(kula.PredkoscX);
+                    kula.UstawKule(0, kula.Y);
+                    kula.UstawPredkosc(Math.Abs(kula.PredkoscX), kula.PredkoscY);
                 }
                 else if (kula.X + kula.Srednica > Stol.Szerokosc)
                 {
-                    kula.X = Stol.Szerokosc - kula.Srednica;
-                    kula.PredkoscX = -Math.Abs(kula.PredkoscX);
+                    kula.UstawKule(Stol.Szerokosc - kula.Srednica, kula.Y);
+                    kula.UstawPredkosc(-Math.Abs(kula.PredkoscX), kula.PredkoscY);
                 }
 
                 if (kula.Y < 0)
                 {
-                    kula.Y = 0;
-                    kula.PredkoscY = Math.Abs(kula.PredkoscY);
+                    kula.UstawKule(kula.X, 0);
+                    kula.UstawPredkosc(kula.PredkoscX, Math.Abs(kula.PredkoscY));
                 }
                 else if (kula.Y + kula.Srednica > Stol.Wysokosc)
                 {
-                    kula.Y = Stol.Wysokosc - kula.Srednica;
-                    kula.PredkoscY = -Math.Abs(kula.PredkoscY);
+                    kula.UstawKule(kula.X, Stol.Wysokosc - kula.Srednica);
+                    kula.UstawPredkosc(kula.PredkoscX, -Math.Abs(kula.PredkoscY));
                 }
             }
         }
@@ -190,11 +185,15 @@ namespace WpfApp1.Logika
             double ped = -(1.0 + wspolczynnikSprezystosci) * predkoscWzglednaWNormalnej;
             ped /= odwrotnoscMasyPierwszej + odwrotnoscMasyDrugiej;
 
-            pierwsza.PredkoscX -= ped * odwrotnoscMasyPierwszej * nx;
-            pierwsza.PredkoscY -= ped * odwrotnoscMasyPierwszej * ny;
+            pierwsza.UstawPredkosc(
+                pierwsza.PredkoscX - ped * odwrotnoscMasyPierwszej * nx,
+                pierwsza.PredkoscY - ped * odwrotnoscMasyPierwszej * ny
+            );
 
-            druga.PredkoscX += ped * odwrotnoscMasyDrugiej * nx;
-            druga.PredkoscY += ped * odwrotnoscMasyDrugiej * ny;
+            druga.UstawPredkosc(
+                druga.PredkoscX + ped * odwrotnoscMasyDrugiej * nx,
+                druga.PredkoscY + ped * odwrotnoscMasyDrugiej * ny
+            );
         }
 
         private static void RozsunKule(Kula pierwsza, Kula druga, double nalozenie, double nx, double ny)
@@ -211,10 +210,15 @@ namespace WpfApp1.Logika
             double przesunieciePierwszej = nalozenie * (odwrotnoscMasyPierwszej / sumaOdwrotnosciMas);
             double przesuniecieDrugiej = nalozenie * (odwrotnoscMasyDrugiej / sumaOdwrotnosciMas);
 
-            pierwsza.X -= nx * przesunieciePierwszej;
-            pierwsza.Y -= ny * przesunieciePierwszej;
-            druga.X += nx * przesuniecieDrugiej;
-            druga.Y += ny * przesuniecieDrugiej;
+            pierwsza.UstawKule(
+                pierwsza.X - nx * przesunieciePierwszej,
+                pierwsza.Y - ny * przesunieciePierwszej
+            );
+
+            druga.UstawKule(
+                druga.X + nx * przesuniecieDrugiej,
+                druga.Y + ny * przesuniecieDrugiej
+            );
         }
     }
 }

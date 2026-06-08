@@ -25,15 +25,15 @@ namespace TestProject1
                 for (int i = 0; i < ileKul; i++)
                 {
                     _kule.Add(new Kula
-                    {
-                        Id = i,
-                        X = 100 + i * 30,
-                        Y = 100,
-                        Srednica = 20,
-                        Masa = 1,
-                        PredkoscX = 0,
-                        PredkoscY = 0
-                    });
+                    (
+                        i,
+                        100 + i * 30,
+                        100,
+                        20,
+                        1,
+                        0,
+                        0
+                    ));
                 }
             }
         }
@@ -68,16 +68,7 @@ namespace TestProject1
         {
             var fakeDane = new UdawaneDane(new[]
             {
-                new Kula
-                {
-                    Id = 1,
-                    X = 100,
-                    Y = 100,
-                    Srednica = 20,
-                    Masa = 1,
-                    PredkoscX = 100,
-                    PredkoscY = 0
-                }
+                new Kula(1, 100, 100, 20, 1, 100, 0)
             });
 
             LogikaApi logika = LogikaApi.TworzApi(fakeDane);
@@ -93,16 +84,7 @@ namespace TestProject1
         {
             var fakeDane = new UdawaneDane(new[]
             {
-                new Kula
-                {
-                    Id = 1,
-                    X = -1,
-                    Y = 100,
-                    Srednica = 20,
-                    Masa = 1,
-                    PredkoscX = -100,
-                    PredkoscY = 0
-                }
+                new Kula(1, -1, 100, 20, 1, -100, 0)
             });
 
             LogikaApi logika = LogikaApi.TworzApi(fakeDane);
@@ -119,27 +101,10 @@ namespace TestProject1
         {
             var fakeDane = new UdawaneDane(new[]
             {
-                new Kula
-                {
-                    Id = 1,
-                    X = 100,
-                    Y = 100,
-                    Srednica = 20,
-                    Masa = 1,
-                    PredkoscX = 10,
-                    PredkoscY = 0
-                },
-                new Kula
-                {
-                    Id = 2,
-                    X = 118,
-                    Y = 100,
-                    Srednica = 20,
-                    Masa = 1,
-                    PredkoscX = -10,
-                    PredkoscY = 0
-                }
+                new Kula(1, 100, 100, 20, 1, 10, 0),
+                new Kula(2, 118, 100, 20, 1, -10, 0)
             });
+        
 
             LogikaApi logika = LogikaApi.TworzApi(fakeDane);
 
@@ -154,27 +119,8 @@ namespace TestProject1
         [TestMethod]
         public void TestZderzeniaSprezystegoZachowujePedIEnergieKinetyczna()
         {
-            var pierwsza = new Kula
-            {
-                Id = 1,
-                X = 100,
-                Y = 100,
-                Srednica = 20,
-                Masa = 2,
-                PredkoscX = 12,
-                PredkoscY = 0
-            };
-
-            var druga = new Kula
-            {
-                Id = 2,
-                X = 118,
-                Y = 100,
-                Srednica = 20,
-                Masa = 1,
-                PredkoscX = -6,
-                PredkoscY = 0
-            };
+            var pierwsza = new Kula(1, 100, 100, 20, 2, 12, 0);
+            var druga = new Kula(2, 118, 100, 20, 1, -6, 0);
 
             double pedPrzed = PoliczPedX(pierwsza, druga);
             double energiaPrzed = PoliczEnergieKinetyczna(pierwsza, druga);

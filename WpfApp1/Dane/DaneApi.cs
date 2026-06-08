@@ -13,17 +13,28 @@ namespace WpfApp1.Dane
 
     public class Kula
     {
-        public int Id { get; set; }
-        public double X { get; set; }
-        public double Y { get; set; }
-        public double Srednica { get; set; }
-        public double Masa { get; set; }
-        public double PredkoscX { get; set; }
-        public double PredkoscY { get; set; }
+        public int Id { get; private set; }
+        public double X { get; private set; }
+        public double Y { get; private set; }
+        public double Srednica { get; private set; }
+        public double Masa { get; private set; }
+        public double PredkoscX { get; private set; }
+        public double PredkoscY { get; private set; }
 
         public double Promien => Srednica / 2.0;
         public double SrodekX => X + Promien;
         public double SrodekY => Y + Promien;
+
+        public Kula(int id, double x, double y, double srednica, double masa, double predkoscX, double predkoscY)
+        {
+            Id = id;
+            X = x;
+            Y = y;
+            Srednica = srednica;
+            Masa = masa;
+            PredkoscX = predkoscX;
+            PredkoscY = predkoscY;
+        }
 
         public void Przesun(double deltaTime)
         {
@@ -31,18 +42,29 @@ namespace WpfApp1.Dane
             Y += PredkoscY * deltaTime;
         }
 
+        public void UstawPredkosc(double vx, double vy)
+        {
+            PredkoscX = vx;
+            PredkoscY = vy;
+        }
+
+        public void UstawKule(double x, double y)
+        {
+            X = x;
+            Y = y;
+        }
+
         public Kula Kopiuj()
         {
-            return new Kula
-            {
-                Id = Id,
-                X = X,
-                Y = Y,
-                Srednica = Srednica,
-                Masa = Masa,
-                PredkoscX = PredkoscX,
-                PredkoscY = PredkoscY
-            };
+            return new Kula(
+                Id,
+                X,
+                Y,
+                Srednica,
+                Masa,
+                PredkoscX,
+                PredkoscY
+            );
         }
     }
 
@@ -60,15 +82,16 @@ namespace WpfApp1.Dane
     }
 
     // logi
-    internal class RejestratorDiagnostyczny
+    internal class RejestratorDiagnostyczny : IDisposable
     {
         // kolejka wspólbieżna - nie ma bledow, jak wątki chcą logować jednocześnie
-        private readonly ConcurrentQueue<string> _kolejkaKlod = new();
+        private readonly ConcurrentQueue<string> _kolejkaLogow = new();
+        private readonly CancellationTokenSource _zrodloAnulowania = new();
         private readonly Task _zadanieZapisu;
 
         public RejestratorDiagnostyczny()
         {
-            _zadanieZapisu = Task.Run(ZapisujWtleAsync); // zapis w tle
+            _zadanieZapisu = Task.Run(() => ZapisujWtleAsync(_zrodloAnulowania.Token)); // zapis w tle
         }
 
         public void ZapiszStanKuli(Kula kula)
@@ -76,16 +99,26 @@ namespace WpfApp1.Dane
             // serializacja do tekstu
             string json = JsonSerializer.Serialize(kula);
             string wpis = $"{DateTime.Now:O} | {json}";
-            _kolejkaKlod.Enqueue(wpis);
+            _kolejkaLogow.Enqueue(wpis);
         }
 
-        private async Task ZapisujWtleAsync()
+        private async Task ZapisujWtleAsync(CancellationToken token)
         {
-            using StreamWriter writer = new StreamWriter("diagnostyka.log", append: false, Encoding.ASCII);
+            using var fileStream = new FileStream(
+                "diagnostyka.log",
+                FileMode.Append,
+                FileAccess.Write,
+                FileShare.ReadWrite | FileShare.Delete
+            );
 
-            while (true)
+            using StreamWriter writer = new StreamWriter(fileStream, Encoding.ASCII)
+            { 
+                AutoFlush = true
+            };
+
+            while (!token.IsCancellationRequested || !_kolejkaLogow.IsEmpty)
             {
-                if (_kolejkaKlod.TryDequeue(out string? wpis))
+                if (_kolejkaLogow.TryDequeue(out string? wpis))
                 {
                     await writer.WriteLineAsync(wpis);
                 }
@@ -94,6 +127,13 @@ namespace WpfApp1.Dane
                     await Task.Delay(10);
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            _zrodloAnulowania.Cancel();
+            _zadanieZapisu.Wait();
+            _zrodloAnulowania.Dispose();
         }
     }
 
@@ -123,16 +163,15 @@ namespace WpfApp1.Dane
                     var pozycja = WylosujBezpiecznaPozycje(srednica); // "var" - kompilator sam wybiera typ
                     var predkosc = WylosujPredkosc();
 
-                    _listKul.Add(new Kula
-                    {
-                        Id = i,
-                        Srednica = srednica,
-                        Masa = masa,
-                        X = pozycja.x,
-                        Y = pozycja.y,
-                        PredkoscX = predkosc.vx,
-                        PredkoscY = predkosc.vy
-                    });
+                    _listKul.Add(new Kula(
+                        i,
+                        pozycja.x,
+                        pozycja.y,
+                        srednica,
+                        masa,
+                        predkosc.vx,
+                        predkosc.vy
+                    ));
                 }
             }
         }
@@ -152,15 +191,22 @@ namespace WpfApp1.Dane
                 throw new ArgumentOutOfRangeException(nameof(deltaTime), "Delta czasu nie może być ujemna.");
             }
 
+            List<Kula> kopiaPoAktualizacaji;
+
             lock (_sekcjaKrytyczna)
             {
-                foreach (var kula in _listKul)
+                Parallel.ForEach(_listKul, kula =>
                 {
                     kula.Przesun(deltaTime);
-                    _rejestrator.ZapiszStanKuli(kula); // Zapis diagnostyczny po przesunięciu
-                }
+                });
 
                 operacjePoRuchu?.Invoke(_listKul); // wykonaj to jeśli nie jest null
+
+                kopiaPoAktualizacaji = _listKul.Select(k => k.Kopiuj()).ToList(); // kopia do logowania
+            }
+            foreach (var kula in kopiaPoAktualizacaji)
+            {
+                _rejestrator.ZapiszStanKuli(kula); // Zapis diagnostyczny po przesunięciu wszyskich 
             }
         }
 
