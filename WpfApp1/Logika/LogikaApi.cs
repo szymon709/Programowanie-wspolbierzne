@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using WpfApp1.Dane;
+﻿using WpfApp1.Dane;
 
 namespace WpfApp1.Logika
 {
@@ -23,8 +22,10 @@ namespace WpfApp1.Logika
 
         private readonly DaneApi _dane;
         private readonly object _sekcjaStartStop = new();
-        private CancellationTokenSource? _zrodloAnulowania;
-        private Task? _zadanieSymulacji;
+
+        private System.Timers.Timer? _timerSymulacji;
+        private DateTime _ostatniCzas;
+        private int _czyKrokWToku; // flaga zabezpieczajaca przed nakładaniem się kroków symulacji
 
         public override event Action? PowiadomOZmianie;
 
@@ -40,27 +41,69 @@ namespace WpfApp1.Logika
                 throw new ArgumentOutOfRangeException(nameof(liczbaKul), "Liczba kul musi być większa od zera.");
             }
 
-            Stop(); // zatrzymaj poprzednie symulacje
+            Stop();
+
             _dane.StworzKule(liczbaKul);
-            PowiadomOZmianie?.Invoke(); // "?." jeśli nie jest null wykonaj Invoke() w tym przypadku odświeżenie ekranu
+            PowiadomOZmianie?.Invoke();
 
-            var noweZrodlo = new CancellationTokenSource(); // obiekt do zatrzymywania pętli async
+            lock (_sekcjaStartStop)
+            {
+                _ostatniCzas = DateTime.UtcNow;
+                _czyKrokWToku = 0; // 0 - nie w toku, 1 - w toku
 
-
-            _zrodloAnulowania = noweZrodlo; // przypisujemy ten obiekt
-            _zadanieSymulacji = Task.Run(() => PetlaSymulacjiAsync(noweZrodlo.Token));
-            // linia wyżej uruchamia taska w tle
+                _timerSymulacji = new System.Timers.Timer(InterwalMs);
+                _timerSymulacji.AutoReset = true;
+                _timerSymulacji.Elapsed += TimerSymulacjiElapsed;
+                _timerSymulacji.Start();
+            }
 
             return Task.CompletedTask;
         }
 
         public override void Stop()
         {
-            _zrodloAnulowania?.Cancel();
-            _zrodloAnulowania?.Dispose();
-            _zrodloAnulowania = null;
-            _zadanieSymulacji = null;
+            lock (_sekcjaStartStop)
+            {
+                if (_timerSymulacji is not null)
+                {
+                    _timerSymulacji.Stop();
+                    _timerSymulacji.Elapsed -= TimerSymulacjiElapsed;
+                    _timerSymulacji.Dispose();
+                    _timerSymulacji = null;
+                }
+            }
         }
+
+        private void TimerSymulacjiElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            // zabezpieczenie flaga by nie wywolalo sie wiecej razy niz raz w tym samym czasie
+            if (Interlocked.Exchange(ref _czyKrokWToku, 1) == 1)
+            {
+                return;
+            }
+
+            try
+            {
+                DateTime teraz = DateTime.UtcNow;
+
+                double deltaTime = (teraz - _ostatniCzas).TotalSeconds;
+                _ostatniCzas = teraz;
+
+                if (deltaTime < 0)
+                {
+                    return;
+                }
+
+
+
+                WykonajKrok(deltaTime);
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _czyKrokWToku, 0);
+            }
+        }
+
 
         public override void WykonajKrok(double deltaTime)
         {
@@ -76,29 +119,6 @@ namespace WpfApp1.Logika
         public override IReadOnlyList<Kula> PobierzWszystkieKule()
         {
             return _dane.PobierzKule();
-        }
-
-        private async Task PetlaSymulacjiAsync(CancellationToken token)
-        {
-            // programowanie czasu rzeczywistego, liczymy rzeczywisty upływ czasu
-            Stopwatch stoper = Stopwatch.StartNew();
-
-            try
-            {
-                while (!token.IsCancellationRequested)
-                {
-                    double rzeczywistyCzas = stoper.Elapsed.TotalSeconds;
-                    stoper.Restart();
-
-                    WykonajKrok(rzeczywistyCzas);
-
-                    await Task.Delay(InterwalMs, token);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // zatrzymanie symulacji
-            }
         }
 
         private static void ObsluzKolizjeZeScianami(IList<Kula> kule)
