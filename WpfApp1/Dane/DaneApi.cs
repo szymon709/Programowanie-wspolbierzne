@@ -118,13 +118,13 @@ namespace WpfApp1.Dane
 
             while (!token.IsCancellationRequested || !_kolejkaLogow.IsEmpty)
             {
-                if (_kolejkaLogow.TryDequeue(out string? wpis))
+                if (_kolejkaLogow.TryDequeue(out string? wpis)) // sprawdz czy jest coś do zapisania
                 {
-                    await writer.WriteLineAsync(wpis);
+                    await writer.WriteLineAsync(wpis); // zapisz
                 }
                 else
                 {
-                    await Task.Delay(10);
+                    await Task.Delay(10); // poczekaj 10ms
                 }
             }
         }
